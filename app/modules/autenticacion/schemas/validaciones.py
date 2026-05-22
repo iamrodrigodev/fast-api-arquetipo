@@ -1,0 +1,5 @@
+class SeguridadValidacionConstantes:
+    LOGIN_MAX_INTENTOS = 5
+    LOGIN_MINUTOS_BLOQUEO = 15
+    LOGIN_MINUTOS_CADUCIDAD_INTENTOS = 15
+    NOMBRE_ROL_MAX = 50

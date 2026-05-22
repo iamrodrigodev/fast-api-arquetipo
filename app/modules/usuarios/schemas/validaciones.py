@@ -1,0 +1,13 @@
+class UsuarioValidacionConstantes:
+    NOMBRE_MAX = 100
+    APELLIDOS_MAX = 100
+    CORREO_MAX = 150
+    CLAVE_MIN = 6
+    CLAVE_MAX = 255
+    TELEFONO_MAX = 12
+    DIRECCION_MAX = 255
+    REFERENCIA_MAX = 255
+    CODIGO_POSTAL_MAX = 10
+    FOTO_URL_MAX = 500
+    NOMBRE_APELLIDOS_PATTERN = r"^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$"
+    TELEFONO_PATTERN = r"^$|^\+519\d{8}$"
