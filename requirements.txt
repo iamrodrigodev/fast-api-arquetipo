@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+asyncpg
+pyjwt
+pydantic
+pydantic-settings
+bcrypt
+bleach
+python-dotenv
