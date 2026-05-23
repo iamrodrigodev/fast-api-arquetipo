@@ -9,3 +9,5 @@ pydantic-settings
 bcrypt
 bleach
 python-dotenv
+passlib[bcrypt]
+argon2-cffi

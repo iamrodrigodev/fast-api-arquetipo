@@ -1,12 +1,6 @@
-from enum import Enum
-from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger, DateTime, ForeignKey, Boolean, Float, Text
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Column, String, SmallInteger
 from app.db.sesion import Base
 from app.modules.autenticacion.schemas.validaciones import SeguridadValidacionConstantes
-
-class NombreRol(Enum):
-    ADMINISTRADOR = "ADMINISTRADOR"
-    USUARIO = "USUARIO"
 
 class Rol(Base):
     __tablename__ = 'roles'

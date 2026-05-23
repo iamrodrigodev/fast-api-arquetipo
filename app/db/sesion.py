@@ -16,7 +16,9 @@ SessionLocal = async_sessionmaker(
 
 Base = declarative_base()
 
-async def obtener_bd() -> AsyncSession:
+from typing import AsyncGenerator
+
+async def obtener_bd() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:
         try:
             yield session

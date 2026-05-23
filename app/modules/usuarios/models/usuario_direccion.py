@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger, DateTime, ForeignKey, Boolean, Float, Text
+from sqlalchemy import Column, String, BigInteger, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.db.sesion import Base
 from app.modules.usuarios.schemas.validaciones import UsuarioValidacionConstantes

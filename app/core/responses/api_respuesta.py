@@ -18,8 +18,9 @@ class ApiDeRespuesta:
             content={k: v for k, v in respuesta.items() if v is not None}
         )
 
+    from typing import Optional
     @staticmethod
-    def error(mensaje_enum, detalles=None, codigo=None, errores=None, request: Request = None):
+    def error(mensaje_enum, detalles=None, codigo=None, errores=None, request: Optional[Request] = None):
         ahora = datetime.now()
 
         if hasattr(mensaje_enum, 'mensaje'):
@@ -32,6 +33,7 @@ class ApiDeRespuesta:
         respuesta = {
             "estado": codigo_final,
             "mensaje": mensaje,
+            "detalles": detalles,
             "ruta": request.url.path if request else None,
             "fecha": ahora.strftime("%Y-%m-%d"),
             "hora": ahora.strftime("%H:%M:%S"),
