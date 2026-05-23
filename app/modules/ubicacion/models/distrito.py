@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger, DateTime, ForeignKey, Boolean, Float, Text
+from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.db.sesion import Base
 from app.modules.ubicacion.schemas.validaciones import UbicacionValidacionConstantes

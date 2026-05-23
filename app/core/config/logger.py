@@ -13,9 +13,6 @@ class InyectorTrazabilidadMiddleware(BaseHTTPMiddleware):
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
-        # En logs asíncronos puros es más complejo inyectar el request en todos lados,
-        # pero para mantener la firma se puede usar contextvars si fuera estricto.
-        # Por simplicidad, seteamos valores por defecto aquí.
         if not hasattr(record, 'id_trazabilidad'):
             record.id_trazabilidad = 'SISTEMA'
         if not hasattr(record, 'cliente_ip'):

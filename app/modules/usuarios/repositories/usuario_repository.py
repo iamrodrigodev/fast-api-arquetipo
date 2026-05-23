@@ -24,7 +24,6 @@ class UsuarioRepository:
             try:
                 session.add(usuario)
                 await session.commit()
-                # Opcional, dependiendo de si se necesita refresh
                 await session.refresh(usuario)
                 logger.debug(f"Usuario guardado/actualizado en DB: {usuario.correo}")
                 return usuario
@@ -37,7 +36,6 @@ class UsuarioRepository:
     async def eliminar(usuario):
         async with SessionLocal() as session:
             try:
-                # Merge the detached instance before deleting
                 merged_usuario = await session.merge(usuario)
                 await session.delete(merged_usuario)
                 await session.commit()

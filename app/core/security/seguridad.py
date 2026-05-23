@@ -24,7 +24,6 @@ async def obtener_usuario_actual(token: str = Depends(oauth2_scheme)):
 
 def requiere_rol(rol_nombre: str):
     def verificador_rol(usuario = Depends(obtener_usuario_actual)):
-        # Asume que usuario.rol se cargó de forma "eager" o se permite acceder
         if usuario.rol.nombre != rol_nombre:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
