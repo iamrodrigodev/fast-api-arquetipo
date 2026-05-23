@@ -3,7 +3,6 @@ from app.modules.autenticacion.schemas.peticion.registro_schema import RegistroP
 from app.modules.autenticacion.schemas.peticion.login_schema import LoginPeticion
 from app.core.responses.api_respuesta import ApiDeRespuesta
 from app.core.responses.mensajes_confirmacion import MensajesDeConfirmacion
-from app.core.security.seguridad import obtener_usuario_actual
 from app.core.dependencies.dependencias import get_autenticacion_service
 from app.modules.autenticacion.services.autenticacion_service import IAutenticacionService
 
