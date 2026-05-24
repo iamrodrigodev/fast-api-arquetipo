@@ -1,4 +1,3 @@
-# dependencias.py
 from app.modules.autenticacion.services.autenticacion_service import IAutenticacionService
 from app.modules.autenticacion.services.impl.autenticacion_service_impl import AutenticacionServiceImpl
 from app.modules.usuarios.services.usuario_service import IUsuarioService

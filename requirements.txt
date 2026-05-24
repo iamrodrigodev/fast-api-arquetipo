@@ -5,9 +5,13 @@ alembic
 asyncpg
 pyjwt
 pydantic
+email-validator
 pydantic-settings
 bcrypt
 bleach
 python-dotenv
 passlib[bcrypt]
 argon2-cffi
+pytest
+pytest-asyncio
+httpx
