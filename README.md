@@ -10,13 +10,13 @@ uvicorn main:app --reload
 python -m pytest -q
 
 # Limpieza de refresh tokens
-# Modo app unica (default):
-# LIMPIEZA_TOKENS_EN_API=true
-#
+Modo app unica (default):
+LIMPIEZA_TOKENS_EN_API=true
+
 # Modo distribuido (recomendado con multiples replicas):
-# 1) Configura LIMPIEZA_TOKENS_EN_API=false en .env
-# 2) Programa este job (cron/worker) cada X horas:
-#    python scripts/limpieza_tokens_refresco.py
+1) Configura LIMPIEZA_TOKENS_EN_API=false en .env
+2) Programa este job (cron/worker) cada X horas:
+python scripts/limpieza_tokens_refresco.py
 
 # Troubleshooting
 - Si falla al iniciar por JWT_SECRET_KEY, define una clave de 32+ caracteres en .env.
