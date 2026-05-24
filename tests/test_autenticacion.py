@@ -11,6 +11,9 @@ async def test_login_ok(client, login_payload_ok):
     assert isinstance(body.get('mensaje'), str)
     assert isinstance(body.get('datos', {}).get('token_acceso'), str)
     assert isinstance(body.get('datos', {}).get('token_refresco'), str)
+    assert body.get('datos', {}).get('id') == 1
+    assert body.get('datos', {}).get('rol', {}).get('nombre') == 'ADMINISTRADOR'
+    assert body.get('datos', {}).get('correo') is None
 
 
 @pytest.mark.asyncio

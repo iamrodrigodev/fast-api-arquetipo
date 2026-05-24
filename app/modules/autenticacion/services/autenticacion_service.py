@@ -3,6 +3,10 @@ from typing import Protocol
 from app.modules.autenticacion.schemas.peticion.registro_schema import RegistroPeticion
 from app.modules.autenticacion.schemas.peticion.login_schema import LoginPeticion
 from app.modules.autenticacion.schemas.peticion.refrescar_token_schema import RefrescarTokenPeticion
+from app.modules.autenticacion.schemas.peticion.recuperacion_clave_schema import (
+    SolicitarRecuperacionClavePeticion,
+    RestablecerClavePeticion,
+)
 from app.modules.autenticacion.schemas.respuesta.respuesta_schema import InicioSesionRespuesta
 
 
@@ -23,6 +27,12 @@ class IAutenticacionService(Protocol):
         ...
 
     async def limpiar_tokens_refresco(self) -> int:
+        ...
+
+    async def solicitar_recuperacion_clave(self, datos: SolicitarRecuperacionClavePeticion) -> bool:
+        ...
+
+    async def restablecer_clave(self, datos: RestablecerClavePeticion) -> bool:
         ...
 
     async def obtener_sesion(self, usuario) -> InicioSesionRespuesta:

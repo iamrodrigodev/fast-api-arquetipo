@@ -10,9 +10,6 @@ class RolRespuesta(BaseModel):
 class InicioSesionRespuesta(BaseModel):
     id: int
     nombre: str
-    apellidos: str
-    correo: str
-    foto_url: Optional[str] = None
     rol: RolRespuesta
     token_acceso: str
     token_refresco: str

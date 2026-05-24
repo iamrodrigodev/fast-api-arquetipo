@@ -10,13 +10,29 @@ from app.modules.ubicacion.models.departamento import Departamento
 from app.modules.ubicacion.models.provincia import Provincia
 from app.modules.ubicacion.models.distrito import Distrito
 from app.modules.autenticacion.models.token_refresco import TokenRefresco
+from app.modules.autenticacion.models.credencial_usuario import CredencialUsuario
+from app.modules.autenticacion.models.estado_login_usuario import EstadoLoginUsuario
+from app.modules.autenticacion.models.token_recuperacion_clave import TokenRecuperacionClave
 import logging
 from app.core.config.ajustes import ajustes
 
 
-_ = (bcrypt, Rol, NombreRol, Usuario, Departamento, Provincia, Distrito, TokenRefresco)
+_ = (
+    bcrypt,
+    Rol,
+    NombreRol,
+    Usuario,
+    Departamento,
+    Provincia,
+    Distrito,
+    TokenRefresco,
+    CredencialUsuario,
+    EstadoLoginUsuario,
+    TokenRecuperacionClave,
+)
 
 logger = logging.getLogger("fastapi")
+
 
 async def _asegurar_esquemas():
     async with engine.begin() as conn:
@@ -29,6 +45,7 @@ async def _asegurar_esquemas():
             if ajustes.DB_FAIL_FAST:
                 raise
 
+
 async def cargar_catalogos_sql():
     async with SessionLocal() as session:
         try:
@@ -40,17 +57,18 @@ async def cargar_catalogos_sql():
                     for statement in statements:
                         await session.execute(text(statement))
                     await session.commit()
-                    logger.info("Catálogo de ubicación (SQL) cargado exitosamente")
+                    logger.info("Catalogo de ubicacion (SQL) cargado exitosamente")
             else:
                 logger.warning(f"Archivo SQL no encontrado en la ruta: {sql_path}")
         except IntegrityError:
             await session.rollback()
-            logger.info("Catálogo de ubicación ya existe (se ignoró el insert duplicado)")
+            logger.info("Catalogo de ubicacion ya existe (se ignoro el insert duplicado)")
         except SQLAlchemyError as e:
             await session.rollback()
-            logger.error(f"Error al cargar catálogo SQL: {str(e)}")
+            logger.error(f"Error al cargar catalogo SQL: {str(e)}")
             if ajustes.DB_FAIL_FAST:
                 raise
+
 
 async def sembrar_usuarios_base():
     async with SessionLocal() as session:
@@ -71,6 +89,7 @@ async def sembrar_usuarios_base():
             logger.error(f"Error al cargar usuarios semilla: {str(e)}")
             if ajustes.DB_FAIL_FAST:
                 raise
+
 
 async def inicializar_datos():
     await _asegurar_esquemas()

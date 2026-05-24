@@ -3,6 +3,9 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from app.modules.usuarios.models.usuario import Usuario
+from app.modules.usuarios.models.usuario_direccion import UsuarioDireccion
+from app.modules.ubicacion.models.distrito import Distrito
+from app.modules.ubicacion.models.provincia import Provincia
 from app.db.sesion import SessionLocal
 
 logger = logging.getLogger("fastapi")
@@ -13,7 +16,13 @@ class UsuarioRepository:
         async with SessionLocal() as session:
             result = await session.execute(
                 select(Usuario)
-                .options(selectinload(Usuario.rol), selectinload(Usuario.direccion))
+                .options(
+                    selectinload(Usuario.rol),
+                    selectinload(Usuario.direccion)
+                    .selectinload(UsuarioDireccion.distrito)
+                    .selectinload(Distrito.provincia)
+                    .selectinload(Provincia.departamento),
+                )
                 .filter_by(id=id)
             )
             return result.scalars().first()
@@ -23,7 +32,13 @@ class UsuarioRepository:
         async with SessionLocal() as session:
             result = await session.execute(
                 select(Usuario)
-                .options(selectinload(Usuario.rol), selectinload(Usuario.direccion))
+                .options(
+                    selectinload(Usuario.rol),
+                    selectinload(Usuario.direccion)
+                    .selectinload(UsuarioDireccion.distrito)
+                    .selectinload(Distrito.provincia)
+                    .selectinload(Provincia.departamento),
+                )
                 .filter_by(correo=correo)
             )
             return result.scalars().first()

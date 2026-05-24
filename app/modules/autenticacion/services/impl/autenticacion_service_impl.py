@@ -1,10 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import logging
+import secrets
+
 from app.modules.usuarios.repositories.usuario_repository import UsuarioRepository
 from app.modules.usuarios.repositories.rol_repository import RolRepository
 from app.modules.autenticacion.repositories.token_refresco_repository import TokenRefrescoRepository
+from app.modules.autenticacion.repositories.seguridad_cuenta_repository import SeguridadCuentaRepository
 from app.modules.autenticacion.models.token_refresco import TokenRefresco
+from app.modules.autenticacion.models.credencial_usuario import CredencialUsuario
+from app.modules.autenticacion.models.estado_login_usuario import EstadoLoginUsuario
+from app.modules.autenticacion.models.token_recuperacion_clave import TokenRecuperacionClave
 from app.modules.usuarios.models.usuario import Usuario
 from app.modules.usuarios.models.usuario_direccion import UsuarioDireccion
 from app.modules.usuarios.enums.nombre_rol import NombreRol
@@ -26,12 +32,30 @@ class AutenticacionServiceImpl(IAutenticacionService):
         self.usuario_repo = UsuarioRepository()
         self.rol_repo = RolRepository()
         self.token_refresco_repo = TokenRefrescoRepository()
+        self.seguridad_repo = SeguridadCuentaRepository()
         self.jwt_service = ServicioJwt()
         self.mapper = AutenticacionMapper()
 
     @staticmethod
     def _hash_token(token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    async def _obtener_o_crear_estado_login(self, usuario_id: int):
+        estado = await self.seguridad_repo.obtener_estado_login(usuario_id)
+        if not estado:
+            estado = EstadoLoginUsuario(usuario_id=usuario_id, intentos_fallidos=0)
+            estado = await self.seguridad_repo.guardar_estado_login(estado)
+        return estado
+
+    async def _obtener_credencial(self, usuario_id: int):
+        credencial = await self.seguridad_repo.obtener_credencial(usuario_id)
+        if credencial:
+            return credencial
+        usuario = await self.usuario_repo.buscar_por_id(usuario_id)
+        if not usuario:
+            return None
+        credencial = CredencialUsuario(usuario_id=usuario_id, hash_clave=usuario.clave)
+        return await self.seguridad_repo.guardar_credencial(credencial)
 
     async def _emitir_tokens_para_usuario(self, usuario):
         token_acceso = self.jwt_service.generar_token_acceso(usuario.id)
@@ -86,7 +110,9 @@ class AutenticacionServiceImpl(IAutenticacionService):
             )
             nuevo_usuario.direccion = direccion
 
-        await self.usuario_repo.guardar(nuevo_usuario)
+        nuevo_usuario = await self.usuario_repo.guardar(nuevo_usuario)
+        await self.seguridad_repo.guardar_credencial(CredencialUsuario(usuario_id=nuevo_usuario.id, hash_clave=hashed_pw))
+        await self.seguridad_repo.guardar_estado_login(EstadoLoginUsuario(usuario_id=nuevo_usuario.id, intentos_fallidos=0))
         logger.info(f"Cuenta registrada exitosamente: {datos.correo}")
         return await self._emitir_tokens_para_usuario(nuevo_usuario)
 
@@ -97,18 +123,33 @@ class AutenticacionServiceImpl(IAutenticacionService):
             logger.warning(f"Usuario no encontrado: {datos.correo}")
             raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
-        ahora = datetime.now()
-        await self._validar_bloqueo_login(usuario, ahora)
+        credencial = await self._obtener_credencial(usuario.id)
+        if not credencial:
+            raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
-        if ServicioHash.verificar_contrasena(datos.clave, str(usuario.clave)):
-            await self._reiniciar_intentos_login(usuario)
+        estado = await self._obtener_o_crear_estado_login(usuario.id)
+        ahora = datetime.now()
+
+        if estado.bloqueado_hasta and ahora < estado.bloqueado_hasta:
+            minutos = int((estado.bloqueado_hasta - ahora).total_seconds() / 60) + 1
+            raise ExcepcionDeNegocio(MensajesDeError.CUENTA_BLOQUEADA, detalles=f"Faltan {minutos} minutos")
+
+        if ServicioHash.verificar_contrasena(datos.clave, str(credencial.hash_clave)):
+            estado.intentos_fallidos = 0
+            estado.bloqueado_hasta = None
+            estado.ultimo_login_ok = ahora
+            await self.seguridad_repo.guardar_estado_login(estado)
             logger.info(f"Inicio de sesion exitoso: {datos.correo}")
             logger.info(f"[AUDITORIA] Login exitoso usuario_id={usuario.id}")
             return await self._emitir_tokens_para_usuario(usuario)
 
+        estado.intentos_fallidos = (estado.intentos_fallidos or 0) + 1
+        if estado.intentos_fallidos >= SeguridadValidacionConstantes.LOGIN_MAX_INTENTOS:
+            estado.bloqueado_hasta = ahora + timedelta(minutes=SeguridadValidacionConstantes.LOGIN_MINUTOS_BLOQUEO)
+        await self.seguridad_repo.guardar_estado_login(estado)
+
         logger.warning(f"Credenciales invalidas para: {datos.correo}")
         logger.warning(f"[AUDITORIA] Login fallido correo={datos.correo}")
-        await self._registrar_intento_fallido_login(usuario, ahora)
         raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
     async def refrescar_token(self, datos):
@@ -147,32 +188,44 @@ class AutenticacionServiceImpl(IAutenticacionService):
         logger.info(f"[AUDITORIA] Limpieza de tokens_refresco eliminados={total}")
         return total
 
+    async def solicitar_recuperacion_clave(self, datos):
+        usuario = await self.usuario_repo.buscar_por_correo(datos.correo.lower())
+        if not usuario:
+            logger.info(f"[AUDITORIA] Recuperacion solicitada para correo no registrado: {datos.correo}")
+            return True
+
+        await self.seguridad_repo.revocar_tokens_recuperacion_usuario(usuario.id)
+        token_plano = secrets.token_urlsafe(48)
+        token_entidad = TokenRecuperacionClave(
+            usuario_id=usuario.id,
+            token_hash=self._hash_token(token_plano),
+            expira_en=datetime.now() + timedelta(minutes=30),
+        )
+        await self.seguridad_repo.guardar_token_recuperacion(token_entidad)
+
+        logger.info(f"[AUDITORIA] Recuperacion de clave solicitada usuario_id={usuario.id}")
+        logger.info(f"[RECUPERACION_CLAVE_DEV] token_recuperacion={token_plano}")
+        return True
+
+    async def restablecer_clave(self, datos):
+        token_hash = self._hash_token(datos.token_recuperacion)
+        token = await self.seguridad_repo.buscar_token_recuperacion_activo(token_hash)
+        if not token:
+            logger.warning("[AUDITORIA] Token de recuperacion invalido o expirado")
+            raise ExcepcionDeNegocio(MensajesDeError.TOKEN_RECUPERACION_INVALIDO)
+
+        credencial = await self._obtener_credencial(token.usuario_id)
+        if not credencial:
+            raise ExcepcionDeNegocio(MensajesDeError.USUARIO_NO_ENCONTRADO)
+
+        credencial.hash_clave = ServicioHash.hashear_contrasena(datos.nueva_clave)
+        credencial.ultimo_cambio_clave = datetime.now()
+        await self.seguridad_repo.guardar_credencial(credencial)
+        await self.seguridad_repo.marcar_token_recuperacion_como_usado(token.id)
+        await self.token_refresco_repo.revocar_todos_usuario(token.usuario_id)
+
+        logger.info(f"[AUDITORIA] Clave restablecida usuario_id={token.usuario_id}")
+        return True
+
     async def obtener_sesion(self, usuario):
         return self.mapper.de_usuario_a_inicio_sesion_respuesta(usuario, "", "", 0)
-
-    async def _validar_bloqueo_login(self, usuario, ahora):
-        if usuario.fecha_bloqueo_login:
-            if TiempoUtil.esta_en_periodo_de_bloqueo(
-                ahora, usuario.fecha_bloqueo_login, SeguridadValidacionConstantes.LOGIN_MINUTOS_BLOQUEO
-            ):
-                minutos = TiempoUtil.calcular_minutos_restantes(
-                    ahora, usuario.fecha_bloqueo_login, SeguridadValidacionConstantes.LOGIN_MINUTOS_BLOQUEO
-                )
-                logger.warning(f"Cuenta bloqueada temporalmente: {usuario.correo}")
-                raise ExcepcionDeNegocio(MensajesDeError.CUENTA_BLOQUEADA, detalles=f"Faltan {minutos} minutos")
-            usuario.intentos_fallidos_login = 0
-            usuario.fecha_bloqueo_login = None
-            await self.usuario_repo.guardar(usuario)
-
-    async def _registrar_intento_fallido_login(self, usuario, ahora):
-        usuario.intentos_fallidos_login = (usuario.intentos_fallidos_login or 0) + 1
-        if usuario.intentos_fallidos_login >= SeguridadValidacionConstantes.LOGIN_MAX_INTENTOS:
-            usuario.fecha_bloqueo_login = ahora
-            logger.warning(f"Cuenta bloqueada por exceso de intentos: {usuario.correo}")
-        await self.usuario_repo.guardar(usuario)
-
-    async def _reiniciar_intentos_login(self, usuario):
-        if (usuario.intentos_fallidos_login or 0) > 0:
-            usuario.intentos_fallidos_login = 0
-            usuario.fecha_bloqueo_login = None
-            await self.usuario_repo.guardar(usuario)

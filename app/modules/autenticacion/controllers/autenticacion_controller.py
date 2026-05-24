@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends
 from app.modules.autenticacion.schemas.peticion.registro_schema import RegistroPeticion
 from app.modules.autenticacion.schemas.peticion.login_schema import LoginPeticion
 from app.modules.autenticacion.schemas.peticion.refrescar_token_schema import RefrescarTokenPeticion
+from app.modules.autenticacion.schemas.peticion.recuperacion_clave_schema import (
+    SolicitarRecuperacionClavePeticion,
+    RestablecerClavePeticion,
+)
 from app.core.responses.api_respuesta import ApiDeRespuesta
 from app.core.responses.mensajes_confirmacion import MensajesDeConfirmacion
 from app.core.dependencies.dependencias import get_autenticacion_service
@@ -55,3 +59,21 @@ async def cerrar_sesion_todos(
 ):
     await servicio_auth.cerrar_sesion_todos(int(usuario_actual.id))
     return ApiDeRespuesta.exito(MensajesDeConfirmacion.SESION_CERRADA)
+
+
+@autenticacion_router.post('/solicitar-recuperacion-clave')
+async def solicitar_recuperacion_clave(
+    peticion: SolicitarRecuperacionClavePeticion,
+    servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
+):
+    await servicio_auth.solicitar_recuperacion_clave(peticion)
+    return ApiDeRespuesta.exito("Si el correo existe, se enviara un enlace de recuperacion")
+
+
+@autenticacion_router.post('/restablecer-clave')
+async def restablecer_clave(
+    peticion: RestablecerClavePeticion,
+    servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
+):
+    await servicio_auth.restablecer_clave(peticion)
+    return ApiDeRespuesta.exito("Clave restablecida exitosamente")

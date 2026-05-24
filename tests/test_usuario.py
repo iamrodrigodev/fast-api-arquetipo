@@ -30,6 +30,12 @@ async def test_perfil_token_valido(client, auth_token):
     assert body.get('estado') == 200
     assert body.get('mensaje') == 'Datos obtenidos exitosamente'
     assert body.get('datos', {}).get('correo') == 'admin@sistema.com'
+    assert 'direccion' in body.get('datos', {})
+    direccion = body.get('datos', {}).get('direccion')
+    if direccion is not None:
+        assert 'distrito_nombre' in direccion
+        assert 'provincia_nombre' in direccion
+        assert 'departamento_nombre' in direccion
 
 
 @pytest.mark.asyncio

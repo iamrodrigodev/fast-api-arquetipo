@@ -11,6 +11,7 @@ class MensajesDeError(Enum):
     ACCESO_DENEGADO = ("Acceso denegado", 403)
     NO_AUTORIZADO = ("No autorizado", 401)
     RECURSO_NO_ENCONTRADO = ("Recurso no encontrado", 404)
+    TOKEN_RECUPERACION_INVALIDO = ("Token de recuperacion invalido o expirado", 400)
 
     def __init__(self, mensaje, codigo):
         self.mensaje = mensaje

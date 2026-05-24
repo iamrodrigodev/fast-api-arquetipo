@@ -8,9 +8,6 @@ class AutenticacionMapper:
         return InicioSesionRespuesta(
             id=usuario.id,
             nombre=usuario.nombre,
-            apellidos=usuario.apellidos,
-            correo=usuario.correo,
-            foto_url=usuario.foto_url,
             rol=rol_dto,
             token_acceso=token_acceso,
             token_refresco=token_refresco,
