@@ -9,5 +9,5 @@ class UsuarioValidacionConstantes:
     REFERENCIA_MAX = 255
     CODIGO_POSTAL_MAX = 10
     FOTO_URL_MAX = 500
-    NOMBRE_APELLIDOS_PATTERN = r"^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$"
+    NOMBRE_APELLIDOS_PATTERN = r"^[a-zA-Z\s]+$"
     TELEFONO_PATTERN = r"^$|^\+519\d{8}$"

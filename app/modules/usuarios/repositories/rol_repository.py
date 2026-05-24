@@ -1,5 +1,6 @@
 import logging
 from sqlalchemy.future import select
+from sqlalchemy.exc import SQLAlchemyError
 from app.modules.usuarios.models.rol import Rol
 from app.db.sesion import SessionLocal
 
@@ -21,7 +22,7 @@ class RolRepository:
                 await session.refresh(rol)
                 logger.debug(f"Rol guardado en DB: {rol.nombre}")
                 return rol
-            except Exception as e:
+            except SQLAlchemyError as e:
                 await session.rollback()
                 logger.error(f"Error al guardar rol {rol.nombre}: {str(e)}")
-                raise e
+                raise

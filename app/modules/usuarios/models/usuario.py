@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from sqlalchemy import Column, String, BigInteger, SmallInteger, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.db.sesion import Base
@@ -20,8 +20,12 @@ class Usuario(Base):
     intentos_fallidos_login = Column(SmallInteger, default=0)
     fecha_bloqueo_login = Column(DateTime)
     
-    fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    fecha_actualizacion = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    fecha_creacion = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    fecha_actualizacion = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     rol_id = Column(SmallInteger, ForeignKey('autenticacion.roles.id'), nullable=False)
     rol = relationship('Rol', backref=backref('usuarios', lazy='dynamic'))

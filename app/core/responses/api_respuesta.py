@@ -1,5 +1,6 @@
 from fastapi.responses import JSONResponse
 from fastapi import Request
+from fastapi.encoders import jsonable_encoder
 from datetime import datetime
 
 class ApiDeRespuesta:
@@ -15,7 +16,7 @@ class ApiDeRespuesta:
 
         return JSONResponse(
             status_code=codigo,
-            content={k: v for k, v in respuesta.items() if v is not None}
+            content=jsonable_encoder({k: v for k, v in respuesta.items() if v is not None})
         )
 
     from typing import Optional
@@ -42,7 +43,7 @@ class ApiDeRespuesta:
 
         return JSONResponse(
             status_code=codigo_final,
-            content={k: v for k, v in respuesta.items() if v is not None}
+            content=jsonable_encoder({k: v for k, v in respuesta.items() if v is not None})
         )
 
     @staticmethod

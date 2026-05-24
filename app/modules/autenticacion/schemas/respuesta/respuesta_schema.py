@@ -1,9 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional
 
+
 class RolRespuesta(BaseModel):
     id: int
     nombre: str
+
 
 class InicioSesionRespuesta(BaseModel):
     id: int
@@ -12,4 +14,7 @@ class InicioSesionRespuesta(BaseModel):
     correo: str
     foto_url: Optional[str] = None
     rol: RolRespuesta
-    token: str
+    token_acceso: str
+    token_refresco: str
+    tipo_token: str = "Bearer"
+    expira_en_segundos: int
