@@ -1,7 +1,8 @@
-from datetime import datetime
-from sqlalchemy import select
+﻿from sqlalchemy import select
+
 from app.db.sesion import SessionLocal
 from app.modules.autenticacion.models.token_refresco import TokenRefresco
+from app.utils.tiempo_util import TiempoUtil
 
 
 class TokenRefrescoRepository:
@@ -22,37 +23,41 @@ class TokenRefrescoRepository:
             token = result.scalars().first()
             if not token:
                 return None
-            if token.expira_en <= datetime.now():
+            if token.expira_en <= TiempoUtil.ahora_utc_sin_tz():
                 return None
             return token
 
     @staticmethod
     async def revocar_por_hash(token_hash: str) -> bool:
         async with SessionLocal() as session:
-            result = await session.execute(select(TokenRefresco).filter_by(token_hash=token_hash, revocado=False))
+            result = await session.execute(
+                select(TokenRefresco).filter_by(token_hash=token_hash, revocado=False)
+            )
             token = result.scalars().first()
             if not token:
                 return False
             token.revocado = True
-            token.fecha_revocacion = datetime.now()
+            token.fecha_revocacion = TiempoUtil.ahora_utc_sin_tz()
             await session.commit()
             return True
 
     @staticmethod
     async def revocar_todos_usuario(usuario_id: int) -> int:
         async with SessionLocal() as session:
-            result = await session.execute(select(TokenRefresco).filter_by(usuario_id=usuario_id, revocado=False))
+            result = await session.execute(
+                select(TokenRefresco).filter_by(usuario_id=usuario_id, revocado=False)
+            )
             tokens = list(result.scalars().all())
             for token in tokens:
                 token.revocado = True
-                token.fecha_revocacion = datetime.now()
+                token.fecha_revocacion = TiempoUtil.ahora_utc_sin_tz()
             await session.commit()
             return len(tokens)
 
     @staticmethod
     async def limpiar_expirados_y_revocados() -> int:
         async with SessionLocal() as session:
-            ahora = datetime.now()
+            ahora = TiempoUtil.ahora_utc_sin_tz()
             result = await session.execute(select(TokenRefresco))
             tokens = list(result.scalars().all())
             eliminados = 0

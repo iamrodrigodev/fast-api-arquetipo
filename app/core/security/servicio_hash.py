@@ -1,22 +1,28 @@
-from passlib.context import CryptContext
-from passlib.exc import UnknownHashError
 import bcrypt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+hasher_argon2 = PasswordHasher()
 
 class ServicioHash:
 
     @staticmethod
     def hashear_contrasena(clave: str) -> str:
-        return pwd_context.hash(clave)
+        return hasher_argon2.hash(clave)
 
     @staticmethod
     def verificar_contrasena(clave_plana: str, hash_almacenado: str) -> bool:
         hash_str = str(hash_almacenado)
+        if hash_str.startswith("$argon2"):
+            try:
+                return hasher_argon2.verify(hash_str, clave_plana)
+            except VerifyMismatchError:
+                return False
+            except InvalidHashError:
+                return False
         try:
-            return pwd_context.verify(clave_plana, hash_str)
-        except (ValueError, TypeError, UnknownHashError):
-            # Fallback para hashes legacy bcrypt ante incompatibilidades passlib/bcrypt
             if hash_str.startswith("$2a$") or hash_str.startswith("$2b$") or hash_str.startswith("$2y$"):
                 return bcrypt.checkpw(clave_plana.encode("utf-8"), hash_str.encode("utf-8"))
-            raise
+            return False
+        except (ValueError, TypeError):
+            return False

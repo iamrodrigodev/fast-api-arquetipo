@@ -1,8 +1,9 @@
 from app.modules.usuarios.schemas.respuesta.esquemas_usuario import (
+    DireccionPerfilRespuesta,
     PerfilRespuesta,
     RolRespuesta,
-    DireccionPerfilRespuesta,
 )
+from app.modules.usuarios.schemas.respuesta.esquemas_usuario_gestion_respuesta import UsuarioGestionRespuesta
 
 
 class UsuarioMapper:
@@ -37,4 +38,19 @@ class UsuarioMapper:
             foto_url=usuario.foto_url,
             rol=rol_dto,
             direccion=direccion_dto,
+        )
+
+    @staticmethod
+    def de_usuario_a_gestion_respuesta(usuario):
+        return UsuarioGestionRespuesta(
+            id=usuario.id,
+            nombre=usuario.nombre,
+            apellidos=usuario.apellidos,
+            correo=usuario.correo,
+            telefono=usuario.telefono,
+            foto_url=usuario.foto_url,
+            estado=int(usuario.estado),
+            rol=RolRespuesta(id=usuario.rol.id, nombre=usuario.rol.nombre),
+            fecha_creacion=usuario.fecha_creacion,
+            fecha_actualizacion=usuario.fecha_actualizacion,
         )

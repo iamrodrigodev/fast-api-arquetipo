@@ -1,9 +1,10 @@
-from datetime import datetime
-from sqlalchemy import select
+﻿from sqlalchemy import select
+
 from app.db.sesion import SessionLocal
 from app.modules.autenticacion.models.credencial_usuario import CredencialUsuario
 from app.modules.autenticacion.models.estado_login_usuario import EstadoLoginUsuario
 from app.modules.autenticacion.models.token_recuperacion_clave import TokenRecuperacionClave
+from app.utils.tiempo_util import TiempoUtil
 
 
 class SeguridadCuentaRepository:
@@ -38,9 +39,11 @@ class SeguridadCuentaRepository:
     @staticmethod
     async def revocar_tokens_recuperacion_usuario(usuario_id: int):
         async with SessionLocal() as session:
-            result = await session.execute(select(TokenRecuperacionClave).filter_by(usuario_id=usuario_id, usado=False))
+            result = await session.execute(
+                select(TokenRecuperacionClave).filter_by(usuario_id=usuario_id, usado=False)
+            )
             tokens = list(result.scalars().all())
-            ahora = datetime.now()
+            ahora = TiempoUtil.ahora_utc_sin_tz()
             for token in tokens:
                 token.usado = True
                 token.fecha_uso = ahora
@@ -64,18 +67,20 @@ class SeguridadCuentaRepository:
             entidad = result.scalars().first()
             if not entidad:
                 return None
-            if entidad.expira_en <= datetime.now():
+            if entidad.expira_en <= TiempoUtil.ahora_utc_sin_tz():
                 return None
             return entidad
 
     @staticmethod
     async def marcar_token_recuperacion_como_usado(token_id: int):
         async with SessionLocal() as session:
-            result = await session.execute(select(TokenRecuperacionClave).filter_by(id=token_id, usado=False))
+            result = await session.execute(
+                select(TokenRecuperacionClave).filter_by(id=token_id, usado=False)
+            )
             entidad = result.scalars().first()
             if not entidad:
                 return False
             entidad.usado = True
-            entidad.fecha_uso = datetime.now()
+            entidad.fecha_uso = TiempoUtil.ahora_utc_sin_tz()
             await session.commit()
             return True

@@ -1,16 +1,25 @@
 import logging
-from sqlalchemy.future import select
+
 from sqlalchemy.exc import SQLAlchemyError
-from app.modules.usuarios.models.rol import Rol
+from sqlalchemy.future import select
+
 from app.db.sesion import SessionLocal
+from app.modules.usuarios.models.rol import Rol
 
 logger = logging.getLogger("fastapi")
+
 
 class RolRepository:
     @staticmethod
     async def buscar_por_nombre(nombre):
         async with SessionLocal() as session:
             result = await session.execute(select(Rol).filter_by(nombre=nombre))
+            return result.scalars().first()
+
+    @staticmethod
+    async def buscar_por_id(rol_id: int):
+        async with SessionLocal() as session:
+            result = await session.execute(select(Rol).filter_by(id=rol_id))
             return result.scalars().first()
 
     @staticmethod

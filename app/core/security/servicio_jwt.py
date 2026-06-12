@@ -24,7 +24,7 @@ class ServicioJwt:
             "tipo": "refresco",
             "jti": str(uuid4()),
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(days=7),
+            "exp": datetime.now(timezone.utc) + timedelta(days=ajustes.JWT_REFRESH_DAYS),
         }
         return jwt.encode(payload, ajustes.JWT_SECRET_KEY, algorithm=ajustes.JWT_ALGORITHM)
 

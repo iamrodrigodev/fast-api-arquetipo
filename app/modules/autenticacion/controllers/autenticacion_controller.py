@@ -1,16 +1,21 @@
 from fastapi import APIRouter, Depends
-from app.modules.autenticacion.schemas.peticion.registro_schema import RegistroPeticion
-from app.modules.autenticacion.schemas.peticion.login_schema import LoginPeticion
-from app.modules.autenticacion.schemas.peticion.refrescar_token_schema import RefrescarTokenPeticion
-from app.modules.autenticacion.schemas.peticion.recuperacion_clave_schema import (
-    SolicitarRecuperacionClavePeticion,
-    RestablecerClavePeticion,
-)
+from app.core.dependencies.dependencias import get_autenticacion_service
+from app.core.security.seguridad import obtener_usuario_actual_id
 from app.core.responses.api_respuesta import ApiDeRespuesta
 from app.core.responses.mensajes_confirmacion import MensajesDeConfirmacion
-from app.core.dependencies.dependencias import get_autenticacion_service
+from app.core.security.rate_limit import (
+    dep_rate_limit_login,
+    dep_rate_limit_recuperacion,
+    dep_rate_limit_refresh,
+)
+from app.modules.autenticacion.schemas.peticion.login_schema import LoginPeticion
+from app.modules.autenticacion.schemas.peticion.recuperacion_clave_schema import (
+    RestablecerClavePeticion,
+    SolicitarRecuperacionClavePeticion,
+)
+from app.modules.autenticacion.schemas.peticion.refrescar_token_schema import RefrescarTokenPeticion
+from app.modules.autenticacion.schemas.peticion.registro_schema import RegistroPeticion
 from app.modules.autenticacion.services.autenticacion_service import IAutenticacionService
-from app.core.security.seguridad import obtener_usuario_actual
 
 
 autenticacion_router = APIRouter()
@@ -25,7 +30,7 @@ async def registrar_cuenta(
     return ApiDeRespuesta.creado(MensajesDeConfirmacion.CUENTA_REGISTRADA, respuesta.model_dump())
 
 
-@autenticacion_router.post('/iniciar-sesion')
+@autenticacion_router.post('/iniciar-sesion', dependencies=[Depends(dep_rate_limit_login)])
 async def iniciar_sesion(
     peticion: LoginPeticion,
     servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
@@ -34,7 +39,7 @@ async def iniciar_sesion(
     return ApiDeRespuesta.exito(MensajesDeConfirmacion.LOGIN_EXITOSO, respuesta.model_dump())
 
 
-@autenticacion_router.post('/refrescar-token')
+@autenticacion_router.post('/refrescar-token', dependencies=[Depends(dep_rate_limit_refresh)])
 async def refrescar_token(
     peticion: RefrescarTokenPeticion,
     servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
@@ -54,20 +59,20 @@ async def cerrar_sesion(
 
 @autenticacion_router.post('/cerrar-sesion-todos')
 async def cerrar_sesion_todos(
-    usuario_actual=Depends(obtener_usuario_actual),
+    usuario_actual_id: int = Depends(obtener_usuario_actual_id),
     servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
 ):
-    await servicio_auth.cerrar_sesion_todos(int(usuario_actual.id))
+    await servicio_auth.cerrar_sesion_todos(usuario_actual_id)
     return ApiDeRespuesta.exito(MensajesDeConfirmacion.SESION_CERRADA)
 
 
-@autenticacion_router.post('/solicitar-recuperacion-clave')
+@autenticacion_router.post('/solicitar-recuperacion-clave', dependencies=[Depends(dep_rate_limit_recuperacion)])
 async def solicitar_recuperacion_clave(
     peticion: SolicitarRecuperacionClavePeticion,
     servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
 ):
     await servicio_auth.solicitar_recuperacion_clave(peticion)
-    return ApiDeRespuesta.exito("Si el correo existe, se enviara un enlace de recuperacion")
+    return ApiDeRespuesta.exito(MensajesDeConfirmacion.ENLACE_RECUPERACION_ENVIADO)
 
 
 @autenticacion_router.post('/restablecer-clave')
@@ -76,4 +81,6 @@ async def restablecer_clave(
     servicio_auth: IAutenticacionService = Depends(get_autenticacion_service)
 ):
     await servicio_auth.restablecer_clave(peticion)
-    return ApiDeRespuesta.exito("Clave restablecida exitosamente")
+    return ApiDeRespuesta.exito(MensajesDeConfirmacion.CLAVE_RESTABLECIDA)
+
+

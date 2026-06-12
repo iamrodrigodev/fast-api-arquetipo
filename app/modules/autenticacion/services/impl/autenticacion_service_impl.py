@@ -13,7 +13,6 @@ from app.modules.autenticacion.models.estado_login_usuario import EstadoLoginUsu
 from app.modules.autenticacion.models.token_recuperacion_clave import TokenRecuperacionClave
 from app.modules.usuarios.models.usuario import Usuario
 from app.modules.usuarios.models.usuario_direccion import UsuarioDireccion
-from app.modules.usuarios.enums.nombre_rol import NombreRol
 from app.core.security.servicio_jwt import ServicioJwt
 from app.core.security.servicio_hash import ServicioHash
 from app.utils.tiempo_util import TiempoUtil
@@ -23,6 +22,7 @@ from app.core.exceptions.mensajes_error import MensajesDeError
 from app.modules.autenticacion.mappers.autenticacion_mapper import AutenticacionMapper
 from app.modules.autenticacion.services.autenticacion_service import IAutenticacionService
 from app.core.config.ajustes import ajustes
+from app.utils.auditoria_util import registrar_evento_auditoria
 
 logger = logging.getLogger("fastapi")
 
@@ -71,7 +71,7 @@ class AutenticacionServiceImpl(IAutenticacionService):
             expira_en=datetime.fromtimestamp(payload_refresco["exp"]),
         )
         await self.token_refresco_repo.guardar(token_entidad)
-        logger.info(f"[AUDITORIA] Emision de tokens para usuario_id={usuario.id}")
+        await registrar_evento_auditoria("emision_tokens", "ok", usuario_id=usuario.id)
 
         return self.mapper.de_usuario_a_inicio_sesion_respuesta(
             usuario,
@@ -86,7 +86,7 @@ class AutenticacionServiceImpl(IAutenticacionService):
             logger.warning(f"Intento de registro con correo duplicado: {datos.correo}")
             raise ExcepcionDeNegocio(MensajesDeError.EMAIL_DUPLICADO)
 
-        rol_usuario = await self.rol_repo.buscar_por_nombre(NombreRol.USUARIO.value)
+        rol_usuario = await self.rol_repo.buscar_por_nombre("USUARIO")
         if not rol_usuario:
             raise ExcepcionDeRecursoNoEncontrado()
 
@@ -128,7 +128,7 @@ class AutenticacionServiceImpl(IAutenticacionService):
             raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
         estado = await self._obtener_o_crear_estado_login(usuario.id)
-        ahora = datetime.now()
+        ahora = TiempoUtil.ahora_utc_sin_tz()
 
         if estado.bloqueado_hasta and ahora < estado.bloqueado_hasta:
             minutos = int((estado.bloqueado_hasta - ahora).total_seconds() / 60) + 1
@@ -140,7 +140,7 @@ class AutenticacionServiceImpl(IAutenticacionService):
             estado.ultimo_login_ok = ahora
             await self.seguridad_repo.guardar_estado_login(estado)
             logger.info(f"Inicio de sesion exitoso: {datos.correo}")
-            logger.info(f"[AUDITORIA] Login exitoso usuario_id={usuario.id}")
+            await registrar_evento_auditoria("login", "ok", usuario_id=usuario.id)
             return await self._emitir_tokens_para_usuario(usuario)
 
         estado.intentos_fallidos = (estado.intentos_fallidos or 0) + 1
@@ -149,19 +149,19 @@ class AutenticacionServiceImpl(IAutenticacionService):
         await self.seguridad_repo.guardar_estado_login(estado)
 
         logger.warning(f"Credenciales invalidas para: {datos.correo}")
-        logger.warning(f"[AUDITORIA] Login fallido correo={datos.correo}")
+        await registrar_evento_auditoria("login", "fallido", correo=datos.correo)
         raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
     async def refrescar_token(self, datos):
         payload = self.jwt_service.obtener_payload(datos.token_refresco)
         if not payload or payload.get("tipo") != "refresco":
-            logger.warning("[AUDITORIA] Refresh token invalido por payload/tipo")
+            await registrar_evento_auditoria("refresh_token", "fallido", motivo="payload_invalido")
             raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
         token_hash = self._hash_token(datos.token_refresco)
         token_bd = await self.token_refresco_repo.buscar_activo_por_hash(token_hash)
         if not token_bd:
-            logger.warning("[AUDITORIA] Intento de reuse o refresh no activo")
+            await registrar_evento_auditoria("refresh_token", "fallido", motivo="token_no_activo")
             raise ExcepcionDeNegocio(MensajesDeError.CREDENCIALES_INVALIDAS)
 
         usuario = await self.usuario_repo.buscar_por_id(int(payload["sub"]))
@@ -169,29 +169,29 @@ class AutenticacionServiceImpl(IAutenticacionService):
             raise ExcepcionDeNegocio(MensajesDeError.USUARIO_NO_ENCONTRADO)
 
         await self.token_refresco_repo.revocar_por_hash(token_hash)
-        logger.info(f"[AUDITORIA] Refresh token rotado usuario_id={usuario.id}")
+        await registrar_evento_auditoria("refresh_token", "ok", usuario_id=usuario.id)
         return await self._emitir_tokens_para_usuario(usuario)
 
     async def cerrar_sesion(self, datos):
         token_hash = self._hash_token(datos.token_refresco)
         resultado = await self.token_refresco_repo.revocar_por_hash(token_hash)
-        logger.info(f"[AUDITORIA] Cierre de sesion por refresh resultado={resultado}")
+        await registrar_evento_auditoria("cerrar_sesion", "ok", revocado=resultado)
         return resultado
 
     async def cerrar_sesion_todos(self, usuario_id: int) -> int:
         total = await self.token_refresco_repo.revocar_todos_usuario(usuario_id)
-        logger.info(f"[AUDITORIA] Cierre de sesion en todos los dispositivos usuario_id={usuario_id} tokens={total}")
+        await registrar_evento_auditoria("cerrar_sesion_todos", "ok", usuario_id=usuario_id, tokens=total)
         return total
 
     async def limpiar_tokens_refresco(self) -> int:
         total = await self.token_refresco_repo.limpiar_expirados_y_revocados()
-        logger.info(f"[AUDITORIA] Limpieza de tokens_refresco eliminados={total}")
+        await registrar_evento_auditoria("limpieza_tokens_refresco", "ok", eliminados=total)
         return total
 
     async def solicitar_recuperacion_clave(self, datos):
         usuario = await self.usuario_repo.buscar_por_correo(datos.correo.lower())
         if not usuario:
-            logger.info(f"[AUDITORIA] Recuperacion solicitada para correo no registrado: {datos.correo}")
+            await registrar_evento_auditoria("solicitar_recuperacion", "ok", correo=datos.correo, usuario_existe=False)
             return True
 
         await self.seguridad_repo.revocar_tokens_recuperacion_usuario(usuario.id)
@@ -199,11 +199,11 @@ class AutenticacionServiceImpl(IAutenticacionService):
         token_entidad = TokenRecuperacionClave(
             usuario_id=usuario.id,
             token_hash=self._hash_token(token_plano),
-            expira_en=datetime.now() + timedelta(minutes=30),
+            expira_en=TiempoUtil.ahora_utc_sin_tz() + timedelta(minutes=30),
         )
         await self.seguridad_repo.guardar_token_recuperacion(token_entidad)
 
-        logger.info(f"[AUDITORIA] Recuperacion de clave solicitada usuario_id={usuario.id}")
+        await registrar_evento_auditoria("solicitar_recuperacion", "ok", usuario_id=usuario.id, usuario_existe=True)
         logger.info(f"[RECUPERACION_CLAVE_DEV] token_recuperacion={token_plano}")
         return True
 
@@ -211,7 +211,7 @@ class AutenticacionServiceImpl(IAutenticacionService):
         token_hash = self._hash_token(datos.token_recuperacion)
         token = await self.seguridad_repo.buscar_token_recuperacion_activo(token_hash)
         if not token:
-            logger.warning("[AUDITORIA] Token de recuperacion invalido o expirado")
+            await registrar_evento_auditoria("restablecer_clave", "fallido", motivo="token_invalido")
             raise ExcepcionDeNegocio(MensajesDeError.TOKEN_RECUPERACION_INVALIDO)
 
         credencial = await self._obtener_credencial(token.usuario_id)
@@ -219,13 +219,17 @@ class AutenticacionServiceImpl(IAutenticacionService):
             raise ExcepcionDeNegocio(MensajesDeError.USUARIO_NO_ENCONTRADO)
 
         credencial.hash_clave = ServicioHash.hashear_contrasena(datos.nueva_clave)
-        credencial.ultimo_cambio_clave = datetime.now()
+        credencial.ultimo_cambio_clave = TiempoUtil.ahora_utc_sin_tz()
         await self.seguridad_repo.guardar_credencial(credencial)
         await self.seguridad_repo.marcar_token_recuperacion_como_usado(token.id)
         await self.token_refresco_repo.revocar_todos_usuario(token.usuario_id)
 
-        logger.info(f"[AUDITORIA] Clave restablecida usuario_id={token.usuario_id}")
+        await registrar_evento_auditoria("restablecer_clave", "ok", usuario_id=token.usuario_id)
         return True
 
     async def obtener_sesion(self, usuario):
         return self.mapper.de_usuario_a_inicio_sesion_respuesta(usuario, "", "", 0)
+
+
+
+

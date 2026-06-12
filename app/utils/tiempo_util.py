@@ -1,6 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, UTC, timedelta
 
 class TiempoUtil:
+    @staticmethod
+    def ahora_utc_sin_tz():
+        return datetime.now(UTC).replace(tzinfo=None)
+
     @staticmethod
     def esta_en_periodo_de_bloqueo(ahora, fecha_bloqueo, minutos_bloqueo):
         if not fecha_bloqueo:

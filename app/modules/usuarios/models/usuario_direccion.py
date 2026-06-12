@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+﻿from app.utils.tiempo_util import TiempoUtil
 from sqlalchemy import Column, String, BigInteger, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.db.sesion import Base
@@ -18,11 +18,11 @@ class UsuarioDireccion(Base):
     referencia = Column(String(UsuarioValidacionConstantes.REFERENCIA_MAX))
     codigo_postal = Column(String(UsuarioValidacionConstantes.CODIGO_POSTAL_MAX))
     
-    fecha_creacion = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    fecha_creacion = Column(DateTime, default=lambda: TiempoUtil.ahora_utc_sin_tz())
     fecha_actualizacion = Column(
         DateTime,
-        default=lambda: datetime.now(UTC).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None)
+        default=lambda: TiempoUtil.ahora_utc_sin_tz(),
+        onupdate=lambda: TiempoUtil.ahora_utc_sin_tz()
     )
 
     usuario = relationship('Usuario', back_populates='direccion')
@@ -30,3 +30,4 @@ class UsuarioDireccion(Base):
 
     def __repr__(self):
         return f'<UsuarioDireccion {self.usuario_id}>'
+

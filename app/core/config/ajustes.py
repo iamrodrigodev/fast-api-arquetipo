@@ -1,23 +1,25 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from datetime import timedelta
 from pydantic import field_validator
+from app.core.exceptions.mensajes_error import MensajesDeError
 
 class Ajustes(BaseSettings):
-    PUERTO: int = 8000
+    PUERTO: int
     CLAVE_SECRETA: str
-    ENTORNO: str = "dev"
-    CORS_ORIGENES: str = "http://localhost:3000,http://127.0.0.1:3000"
-    CORS_CREDENCIALES: bool = True
-    DB_FAIL_FAST: bool = True
-    LIMPIEZA_TOKENS_HORAS: int = 6
-    LIMPIEZA_TOKENS_EN_API: bool = True
-    LOG_FORMAT: str = "text"
+    ENTORNO: str
+    CORS_ORIGENES: str
+    CORS_CREDENCIALES: bool
+    DB_FAIL_FAST: bool
+    LIMPIEZA_TOKENS_HORAS: int
+    LIMPIEZA_TOKENS_EN_API: bool
+    LOG_FORMAT: str
 
     DATABASE_URL: str
     
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     JWT_EXPIRATION_HOURS: int
+    JWT_REFRESH_DAYS: int
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -25,7 +27,7 @@ class Ajustes(BaseSettings):
     @classmethod
     def validar_jwt_secret(cls, value: str) -> str:
         if len(value) < 32:
-            raise ValueError("JWT_SECRET_KEY debe tener al menos 32 caracteres.")
+            raise ValueError(MensajesDeError.JWT_CLAVE_MUY_CORTA.mensaje)
         return value
 
     @property

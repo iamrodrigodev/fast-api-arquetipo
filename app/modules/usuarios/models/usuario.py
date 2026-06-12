@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+﻿from app.utils.tiempo_util import TiempoUtil
 from sqlalchemy import Column, String, BigInteger, SmallInteger, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.db.sesion import Base
@@ -20,11 +20,11 @@ class Usuario(Base):
     intentos_fallidos_login = Column(SmallInteger, default=0)
     fecha_bloqueo_login = Column(DateTime)
     
-    fecha_creacion = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    fecha_creacion = Column(DateTime, default=lambda: TiempoUtil.ahora_utc_sin_tz())
     fecha_actualizacion = Column(
         DateTime,
-        default=lambda: datetime.now(UTC).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None)
+        default=lambda: TiempoUtil.ahora_utc_sin_tz(),
+        onupdate=lambda: TiempoUtil.ahora_utc_sin_tz()
     )
 
     rol_id = Column(SmallInteger, ForeignKey('autenticacion.roles.id'), nullable=False)
@@ -34,3 +34,4 @@ class Usuario(Base):
 
     def __repr__(self):
         return f'<Usuario {self.correo}>'
+

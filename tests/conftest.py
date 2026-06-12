@@ -1,16 +1,19 @@
-import os
+﻿import os
 import pytest
 import pytest_asyncio
 import httpx
 
 os.environ.setdefault("JWT_SECRET_KEY", "jwt_secret_super_seguro_minimo_32_chars_ok")
 os.environ.setdefault("CLAVE_SECRETA", "clave_interna_pruebas_segura_123456789")
+os.environ.setdefault("ENTORNO", "test")
 
 from main import app
+from app.db.inicializar_bd import inicializar_datos
 
 
 @pytest_asyncio.fixture(scope="session")
 async def client():
+    await inicializar_datos()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
@@ -42,3 +45,7 @@ async def token_refresco(client, login_payload_ok):
     token = response.json().get("datos", {}).get("token_refresco")
     assert token
     return token
+
+
+
+

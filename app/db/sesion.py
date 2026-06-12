@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 from app.core.config.ajustes import ajustes
 
-usar_null_pool = ajustes.ENTORNO.lower() in {"dev", "test", "testing", "local"}
+usar_null_pool = ajustes.ENTORNO.lower() in {"dev", "test", "testing", "local", "desarrollo"}
 
 engine = create_async_engine(
     ajustes.DATABASE_URL,

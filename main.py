@@ -11,6 +11,7 @@ from app.core.exceptions.excepciones_globales import registrar_manejadores_error
 from app.core.security.cors import configurar_cors
 from app.db.inicializar_bd import inicializar_datos
 from app.modules.autenticacion.services.impl.autenticacion_service_impl import AutenticacionServiceImpl
+from app.db.verificar_migraciones import verificar_revision_alembic
 
 
 async def _tarea_limpieza_tokens(stop_event: asyncio.Event):
@@ -26,6 +27,8 @@ async def _tarea_limpieza_tokens(stop_event: asyncio.Event):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await inicializar_datos()
+    if ajustes.ENTORNO.lower() in {"prod", "stage", "staging", "production"}:
+        verificar_revision_alembic()
     servicio = AutenticacionServiceImpl()
     await servicio.limpiar_tokens_refresco()
     stop_event = asyncio.Event()
@@ -60,3 +63,6 @@ app = crear_app()
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=ajustes.PUERTO, reload=True)
+
+
+

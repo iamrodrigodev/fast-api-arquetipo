@@ -1,10 +1,10 @@
 import os
+import asyncio
 import bcrypt
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.db.sesion import SessionLocal, engine, Base
 from app.modules.usuarios.models.rol import Rol
-from app.modules.usuarios.enums.nombre_rol import NombreRol
 from app.modules.usuarios.models.usuario import Usuario
 from app.modules.ubicacion.models.departamento import Departamento
 from app.modules.ubicacion.models.provincia import Provincia
@@ -13,14 +13,13 @@ from app.modules.autenticacion.models.token_refresco import TokenRefresco
 from app.modules.autenticacion.models.credencial_usuario import CredencialUsuario
 from app.modules.autenticacion.models.estado_login_usuario import EstadoLoginUsuario
 from app.modules.autenticacion.models.token_recuperacion_clave import TokenRecuperacionClave
+from app.modules.estado.models.registro_auditoria import RegistroAuditoria
 import logging
 from app.core.config.ajustes import ajustes
-
 
 _ = (
     bcrypt,
     Rol,
-    NombreRol,
     Usuario,
     Departamento,
     Provincia,
@@ -29,9 +28,28 @@ _ = (
     CredencialUsuario,
     EstadoLoginUsuario,
     TokenRecuperacionClave,
+    RegistroAuditoria,
 )
 
 logger = logging.getLogger("fastapi")
+
+
+def _leer_sentencias_sql(sql_path: str) -> list[str]:
+    with open(sql_path, "r", encoding="utf-8-sig") as archivo_sql:
+        contenido = archivo_sql.read()
+    sentencias = []
+    acumulado: list[str] = []
+    for linea in contenido.splitlines():
+        texto = linea.strip()
+        if not texto or texto.startswith("--"):
+            continue
+        acumulado.append(linea)
+    bloque = "\n".join(acumulado)
+    for sentencia in bloque.split(";"):
+        limpia = sentencia.strip()
+        if limpia:
+            sentencias.append(limpia)
+    return sentencias
 
 
 async def _asegurar_esquemas():
@@ -51,13 +69,10 @@ async def cargar_catalogos_sql():
         try:
             sql_path = os.path.join(os.path.dirname(__file__), 'sql', 'ubicacion_peru.sql')
             if os.path.exists(sql_path):
-                with open(sql_path, 'r', encoding='utf-8') as f:
-                    sql_content = f.read()
-                    statements = [s.strip() for s in sql_content.split(';') if s.strip()]
-                    for statement in statements:
-                        await session.execute(text(statement))
-                    await session.commit()
-                    logger.info("Catalogo de ubicacion (SQL) cargado exitosamente")
+                for statement in _leer_sentencias_sql(sql_path):
+                    await session.execute(text(statement))
+                await session.commit()
+                logger.info("Catalogo de ubicacion (SQL) cargado exitosamente")
             else:
                 logger.warning(f"Archivo SQL no encontrado en la ruta: {sql_path}")
         except IntegrityError:
@@ -75,13 +90,10 @@ async def sembrar_usuarios_base():
         try:
             sql_path = os.path.join(os.path.dirname(__file__), 'sql', 'usuarios_semilla.sql')
             if os.path.exists(sql_path):
-                with open(sql_path, 'r', encoding='utf-8') as f:
-                    sql_content = f.read()
-                    statements = [s.strip() for s in sql_content.split(';') if s.strip()]
-                    for statement in statements:
-                        await session.execute(text(statement))
-                    await session.commit()
-                    logger.info("Usuarios semilla cargados exitosamente (Admin y Usuario)")
+                for statement in _leer_sentencias_sql(sql_path):
+                    await session.execute(text(statement))
+                await session.commit()
+                logger.info("Usuarios semilla cargados exitosamente (Admin y Usuario)")
             else:
                 logger.warning(f"Archivo SQL de usuarios no encontrado: {sql_path}")
         except SQLAlchemyError as e:
@@ -97,3 +109,7 @@ async def inicializar_datos():
         await conn.run_sync(Base.metadata.create_all)
     await cargar_catalogos_sql()
     await sembrar_usuarios_base()
+
+
+if __name__ == "__main__":
+    asyncio.run(inicializar_datos())
