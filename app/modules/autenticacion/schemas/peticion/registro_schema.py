@@ -14,7 +14,7 @@ class RegistroPeticion(BaseModel):
     telefono: str | None = Field(None, max_length=UsuarioValidacionConstantes.TELEFONO_MAX)
     direccion: str | None = Field(None, max_length=UsuarioValidacionConstantes.DIRECCION_MAX)
     referencia: str | None = Field(None, max_length=UsuarioValidacionConstantes.REFERENCIA_MAX)
-    codigo_postal: str | None = Field(None, max_length=UsuarioValidacionConstantes.CODIGO_POSTAL_MAX)
+    codigo_postal: str | None = Field(None, min_length=UsuarioValidacionConstantes.CODIGO_POSTAL_MIN, max_length=UsuarioValidacionConstantes.CODIGO_POSTAL_MAX)
     distrito_id: str | None = Field(None, max_length=UbicacionValidacionConstantes.DISTRITO_ID_MAX)
 
     @field_validator('nombre', 'apellidos', 'direccion', 'referencia', 'codigo_postal', mode='before')

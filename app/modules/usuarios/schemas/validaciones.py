@@ -7,6 +7,7 @@ class UsuarioValidacionConstantes:
     TELEFONO_MAX = 12
     DIRECCION_MAX = 255
     REFERENCIA_MAX = 255
+    CODIGO_POSTAL_MIN = 4
     CODIGO_POSTAL_MAX = 10
     FOTO_URL_MAX = 500
     NOMBRE_APELLIDOS_PATTERN = r"^[a-zA-Z\s]+$"
