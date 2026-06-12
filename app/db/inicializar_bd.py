@@ -57,6 +57,7 @@ async def _asegurar_esquemas():
         try:
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS autenticacion;"))
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS ubicacion;"))
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS estado;"))
             logger.info("Esquemas verificados")
         except SQLAlchemyError as e:
             logger.error(f"Error al crear esquemas: {str(e)}")
